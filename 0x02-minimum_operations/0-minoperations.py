@@ -1,7 +1,6 @@
 #!/usr/bin/python3
-"""
-Module for calculating the minimum number of operations
-"""
+""" Module for calculating the minimum number of operations
+      """
 
 
 def minOperations(n: int) -> int:
@@ -20,4 +19,3 @@ def minOperations(n: int) -> int:
     if len(body) != n:
         return 0
     return op
-    
