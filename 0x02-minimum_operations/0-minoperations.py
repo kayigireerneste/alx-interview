@@ -20,3 +20,4 @@ def minOperations(n: int) -> int:
     if len(body) != n:
         return 0
     return op
+    
