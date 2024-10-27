@@ -1,8 +1,7 @@
 #!/usr/bin/python3
-'''A script for parsing HTTP request logs and computing metrics.
+'''A script for parsing HTTP request logs.
 '''
 import re
-import sys
 
 
 def extract_input(input_line):
@@ -14,22 +13,25 @@ def extract_input(input_line):
     Returns:
         dict: Parsed data from the log line.
     '''
-    log_pattern = (
+    fp = (
         r'\s*(?P<ip>\S+)\s*',
-        r'\s*\[(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)\]\s*',
-        r'\"(?P<request>GET \/projects\/260 HTTP\/1\.1)\"\s*',
-        r'(?P<status_code>\d+)\s*',
-        r'(?P<file_size>\d+)'
+        r'\s*\[(?P<date>\d+\-\d+\-\d+ \d+:\d+:\d+\.\d+)\]',
+        r'\s*"(?P<request>[^"]*)"\s*',
+        r'\s*(?P<status_code>\S+)',
+        r'\s*(?P<file_size>\d+)'
     )
-    log_fmt = '{}\\-{}{}{}\\s*'.format(log_pattern[0], log_pattern[1], log_pattern[2], log_pattern[3], log_pattern[4])
-    match = re.fullmatch(log_fmt, input_line)
-    
-    if match is not None:
-        return {
-            'status_code': match.group('status_code'),
-            'file_size': int(match.group('file_size')),
-        }
-    return None
+    info = {
+        'status_code': 0,
+        'file_size': 0,
+    }
+    log_fmt = '{}\\-{}{}{}{}\\s*'.format(fp[0], fp[1], fp[2], fp[3], fp[4])
+    resp_match = re.fullmatch(log_fmt, input_line)
+    if resp_match is not None:
+        status_code = resp_match.group('status_code')
+        file_size = int(resp_match.group('file_size'))
+        info['status_code'] = status_code
+        info['file_size'] = file_size
+    return info
 
 
 def print_statistics(total_file_size, status_codes_stats):
@@ -39,10 +41,11 @@ def print_statistics(total_file_size, status_codes_stats):
         total_file_size (int): The total size of all files in the log.
         status_codes_stats (dict): A dictionary containing status codes and their counts.
     '''
-    print(f'File size: {total_file_size}')
-    for code in sorted(status_codes_stats):
-        if status_codes_stats[code] > 0:
-            print(f'{code}: {status_codes_stats[code]}')
+    print('File size: {:d}'.format(total_file_size), flush=True)
+    for status_code in sorted(status_codes_stats.keys()):
+        num = status_codes_stats.get(status_code, 0)
+        if num > 0:
+            print('{:s}: {:d}'.format(status_code, num), flush=True)
 
 
 def update_metrics(line, total_file_size, status_codes_stats):
@@ -57,15 +60,10 @@ def update_metrics(line, total_file_size, status_codes_stats):
         int: The updated total file size.
     '''
     line_info = extract_input(line)
-    
-    if line_info is not None:
-        status_code = line_info['status_code']
-        file_size = line_info['file_size']
-        if status_code in status_codes_stats:
-            status_codes_stats[status_code] += 1
-        total_file_size += file_size
-
-    return total_file_size
+    status_code = line_info.get('status_code', '0')
+    if status_code in status_codes_stats.keys():
+        status_codes_stats[status_code] += 1
+    return total_file_size + line_info['file_size']
 
 
 def run():
@@ -73,23 +71,29 @@ def run():
     '''
     line_num = 0
     total_file_size = 0
-    status_codes_stats = {code: 0 for code in ['200', '301', '400', '401', '403', '404', '405', '500']}
-    
+    status_codes_stats = {
+        '200': 0,
+        '301': 0,
+        '400': 0,
+        '401': 0,
+        '403': 0,
+        '404': 0,
+        '405': 0,
+        '500': 0,
+    }
     try:
         while True:
-            line = sys.stdin.readline().strip()
-            if not line:
-                break
-
-            total_file_size = update_metrics(line, total_file_size, status_codes_stats)
+            line = input()
+            total_file_size = update_metrics(
+                line,
+                total_file_size,
+                status_codes_stats,
+            )
             line_num += 1
-
             if line_num % 10 == 0:
                 print_statistics(total_file_size, status_codes_stats)
-
     except (KeyboardInterrupt, EOFError):
         print_statistics(total_file_size, status_codes_stats)
-        sys.exit(0)
 
 
 if __name__ == '__main__':
