@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-'''pascal triangle task
-'''
 from typing import List
 
 
 def pascal_triangle(n: int) -> List[list]:
-
+    '''
+    Pascal triangle
+    '''
     if n <= 0:
         return []
 
